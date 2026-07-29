@@ -1,21 +1,14 @@
 import os
-from dotenv import load_dotenv
 
-# Загружаем переменные окружения из .env файла
-load_dotenv()
-
-# Токен бота
+# Токен из переменных окружения Render
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+if not BOT_TOKEN:
+    raise ValueError("❌ Токен не найден! Добавь BOT_TOKEN в Environment Variables на Render.")
+
 # Настройки по умолчанию
-DEFAULT_INTERVAL = 5  # минут
-DEFAULT_MAX_REPEATS = 6  # количество повторов
+DEFAULT_INTERVAL = 5
+DEFAULT_MAX_REPEATS = 6
 DEFAULT_STOP_WORD = "хватит"
 DEFAULT_TIMEZONE = "Europe/Moscow"
-
-# Путь к базе данных
 DATABASE_PATH = "reminders.db"
-
-# Проверка токена
-if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN не найден в переменных окружения!")
