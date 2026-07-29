@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import threading
+import time
 from datetime import datetime
 from flask import Flask
 
@@ -33,16 +34,20 @@ def health():
 
 def run_flask():
     """Запуск Flask в отдельном потоке"""
-    flask_app.run(host="0.0.0.0", port=8080)
+    logger.info("🌐 Запуск Flask сервера на порту 8080...")
+    flask_app.run(host="0.0.0.0", port=8080, debug=False, use_reloader=False)
 
 # --- Telegram бот ---
 async def main():
     logger.info("🚀 Запуск бота на Render...")
     
-    # Запускаем Flask в фоновом потоке
-    thread = threading.Thread(target=run_flask, daemon=True)
-    thread.start()
-    logger.info("🌐 Flask сервер запущен на порту 8080")
+    # ЗАПУСКАЕМ FLASK В ОТДЕЛЬНОМ ПОТОКЕ ПРЯМО СЕЙЧАС
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    
+    # Даём Flask время подняться
+    time.sleep(2)
+    logger.info("✅ Flask сервер запущен")
     
     bot = Bot(
         token=BOT_TOKEN,
