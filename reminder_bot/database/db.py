@@ -5,14 +5,12 @@ import os
 
 class Database:
     def __init__(self):
-        # База данных в файле рядом с кодом
         self.db_path = os.path.join(os.path.dirname(__file__), '..', 'reminders.db')
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
         self._create_tables()
 
     def _create_tables(self):
-        """Создание таблиц, если их нет"""
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
@@ -22,7 +20,6 @@ class Database:
                 timezone TEXT DEFAULT 'Europe/Moscow'
             )
         """)
-
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS reminders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,13 +39,11 @@ class Database:
         self.conn.commit()
 
     def get_user_settings(self, user_id: int) -> Dict[str, Any]:
-        """Получить настройки пользователя"""
         self.cursor.execute(
             "SELECT stop_word, repeat_interval, max_repeats, timezone FROM users WHERE user_id = ?",
             (user_id,)
         )
         result = self.cursor.fetchone()
-        
         if result:
             return {
                 "stop_word": result[0],
@@ -57,10 +52,7 @@ class Database:
                 "timezone": result[3]
             }
         else:
-            self.cursor.execute(
-                "INSERT INTO users (user_id) VALUES (?)",
-                (user_id,)
-            )
+            self.cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
             self.conn.commit()
             return {
                 "stop_word": "хватит",
@@ -70,7 +62,6 @@ class Database:
             }
 
     def update_user_settings(self, user_id: int, **kwargs):
-        """Обновить настройки пользователя"""
         for key, value in kwargs.items():
             self.cursor.execute(
                 f"UPDATE users SET {key} = ? WHERE user_id = ?",
@@ -80,28 +71,19 @@ class Database:
 
     def add_reminder(self, user_id: int, text: str, remind_time: datetime, 
                      reminder_type: str = 'once', week_day: Optional[int] = None) -> int:
-        """Добавить новое напоминание"""
         self.cursor.execute("""
             INSERT INTO reminders (
                 user_id, text, remind_time, reminder_type, week_day, 
                 repeat_enabled, repeat_count, created_at, is_active
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            user_id,
-            text,
-            remind_time.isoformat(),
-            reminder_type,
-            week_day,
-            0,
-            0,
-            datetime.now().isoformat(),
-            1
+            user_id, text, remind_time.isoformat(), reminder_type,
+            week_day, 0, 0, datetime.now().isoformat(), 1
         ))
         self.conn.commit()
         return self.cursor.lastrowid
 
     def get_active_reminders(self, user_id: int) -> List[Dict[str, Any]]:
-        """Получить все активные напоминания пользователя"""
         self.cursor.execute("""
             SELECT id, text, remind_time, reminder_type, week_day, 
                    repeat_enabled, repeat_count
@@ -109,7 +91,6 @@ class Database:
             WHERE user_id = ? AND is_active = 1
             ORDER BY remind_time
         """, (user_id,))
-        
         rows = self.cursor.fetchall()
         reminders = []
         for row in rows:
@@ -125,14 +106,12 @@ class Database:
         return reminders
 
     def get_reminder(self, reminder_id: int) -> Optional[Dict[str, Any]]:
-        """Получить напоминание по ID"""
         self.cursor.execute("""
             SELECT id, user_id, text, remind_time, reminder_type, week_day,
                    is_active, repeat_enabled, repeat_count
             FROM reminders
             WHERE id = ?
         """, (reminder_id,))
-        
         row = self.cursor.fetchone()
         if row:
             return {
@@ -149,12 +128,10 @@ class Database:
         return None
 
     def delete_reminder(self, reminder_id: int):
-        """Удалить напоминание"""
         self.cursor.execute("DELETE FROM reminders WHERE id = ?", (reminder_id,))
         self.conn.commit()
 
     def disable_reminder(self, reminder_id: int):
-        """Отключить напоминание"""
         self.cursor.execute(
             "UPDATE reminders SET is_active = 0 WHERE id = ?",
             (reminder_id,)
@@ -162,7 +139,6 @@ class Database:
         self.conn.commit()
 
     def update_reminder_time(self, reminder_id: int, new_time: datetime):
-        """Обновить время напоминания"""
         self.cursor.execute(
             "UPDATE reminders SET remind_time = ? WHERE id = ?",
             (new_time.isoformat(), reminder_id)
@@ -170,7 +146,6 @@ class Database:
         self.conn.commit()
 
     def update_repeat_status(self, reminder_id: int, enabled: bool, count: int = 0):
-        """Обновить статус повтора"""
         self.cursor.execute(
             "UPDATE reminders SET repeat_enabled = ?, repeat_count = ? WHERE id = ?",
             (1 if enabled else 0, count, reminder_id)
@@ -178,7 +153,6 @@ class Database:
         self.conn.commit()
 
     def increment_repeat_count(self, reminder_id: int) -> int:
-        """Увеличить счетчик повторов"""
         self.cursor.execute(
             "UPDATE reminders SET repeat_count = repeat_count + 1 WHERE id = ?",
             (reminder_id,)
@@ -191,7 +165,6 @@ class Database:
         return self.cursor.fetchone()[0]
 
     def get_due_reminders(self) -> List[Dict[str, Any]]:
-        """Получить все просроченные активные напоминания"""
         now = datetime.now()
         self.cursor.execute("""
             SELECT id, user_id, text, remind_time, reminder_type, week_day,
@@ -199,7 +172,6 @@ class Database:
             FROM reminders
             WHERE is_active = 1 AND remind_time <= ?
         """, (now.isoformat(),))
-        
         rows = self.cursor.fetchall()
         reminders = []
         for row in rows:
@@ -216,5 +188,4 @@ class Database:
         return reminders
 
     def close(self):
-        """Закрыть соединение с БД"""
         self.conn.close()
