@@ -1,59 +1,16 @@
 import sqlite3
-import os
-import tempfile
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
-from google.cloud import storage
-from config import DATABASE_PATH
+import os
 
 class Database:
     def __init__(self):
-        self.bucket_name = "reminder-bot-data"  # Название твоего bucket
-        self.db_filename = "reminders.db"
-        self.db_path = self._get_db_path()
-        
-        # Скачиваем БД из облака при запуске
-        self._download_db()
-        
+        # База данных в файле рядом с кодом
+        self.db_path = os.path.join(os.path.dirname(__file__), '..', 'reminders.db')
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
         self._create_tables()
-    
-    def _get_db_path(self):
-        """Получить путь к файлу БД"""
-        if os.environ.get('K_SERVICE'):  # Это Cloud Run
-            # Используем /tmp для Cloud Run (можно писать)
-            return f"/tmp/{self.db_filename}"
-        else:
-            # Локально
-            return DATABASE_PATH
-    
-    def _download_db(self):
-        """Скачать БД из облака"""
-        try:
-            client = storage.Client()
-            bucket = client.bucket(self.bucket_name)
-            blob = bucket.blob(self.db_filename)
-            
-            if blob.exists():
-                blob.download_to_filename(self.db_path)
-                print(f"✅ БД загружена из облака")
-            else:
-                print(f"ℹ️ БД не найдена в облаке, будет создана новая")
-        except Exception as e:
-            print(f"⚠️ Ошибка загрузки БД: {e}")
-    
-    def _upload_db(self):
-        """Загрузить БД в облако"""
-        try:
-            client = storage.Client()
-            bucket = client.bucket(self.bucket_name)
-            blob = bucket.blob(self.db_filename)
-            blob.upload_from_filename(self.db_path)
-            print(f"✅ БД сохранена в облако")
-        except Exception as e:
-            print(f"⚠️ Ошибка сохранения БД: {e}")
-    
+
     def _create_tables(self):
         """Создание таблиц, если их нет"""
         self.cursor.execute("""
@@ -83,8 +40,7 @@ class Database:
             )
         """)
         self.conn.commit()
-    
-    # ============ РАБОТА С ПОЛЬЗОВАТЕЛЯМИ ============
+
     def get_user_settings(self, user_id: int) -> Dict[str, Any]:
         """Получить настройки пользователя"""
         self.cursor.execute(
@@ -106,7 +62,6 @@ class Database:
                 (user_id,)
             )
             self.conn.commit()
-            self._upload_db()
             return {
                 "stop_word": "хватит",
                 "repeat_interval": 5,
@@ -122,9 +77,7 @@ class Database:
                 (value, user_id)
             )
         self.conn.commit()
-        self._upload_db()
 
-    # ============ РАБОТА С НАПОМИНАНИЯМИ ============
     def add_reminder(self, user_id: int, text: str, remind_time: datetime, 
                      reminder_type: str = 'once', week_day: Optional[int] = None) -> int:
         """Добавить новое напоминание"""
@@ -145,7 +98,6 @@ class Database:
             1
         ))
         self.conn.commit()
-        self._upload_db()
         return self.cursor.lastrowid
 
     def get_active_reminders(self, user_id: int) -> List[Dict[str, Any]]:
@@ -200,7 +152,6 @@ class Database:
         """Удалить напоминание"""
         self.cursor.execute("DELETE FROM reminders WHERE id = ?", (reminder_id,))
         self.conn.commit()
-        self._upload_db()
 
     def disable_reminder(self, reminder_id: int):
         """Отключить напоминание"""
@@ -209,7 +160,6 @@ class Database:
             (reminder_id,)
         )
         self.conn.commit()
-        self._upload_db()
 
     def update_reminder_time(self, reminder_id: int, new_time: datetime):
         """Обновить время напоминания"""
@@ -218,7 +168,6 @@ class Database:
             (new_time.isoformat(), reminder_id)
         )
         self.conn.commit()
-        self._upload_db()
 
     def update_repeat_status(self, reminder_id: int, enabled: bool, count: int = 0):
         """Обновить статус повтора"""
@@ -227,7 +176,6 @@ class Database:
             (1 if enabled else 0, count, reminder_id)
         )
         self.conn.commit()
-        self._upload_db()
 
     def increment_repeat_count(self, reminder_id: int) -> int:
         """Увеличить счетчик повторов"""
@@ -240,7 +188,6 @@ class Database:
             "SELECT repeat_count FROM reminders WHERE id = ?",
             (reminder_id,)
         )
-        self._upload_db()
         return self.cursor.fetchone()[0]
 
     def get_due_reminders(self) -> List[Dict[str, Any]]:
@@ -270,5 +217,4 @@ class Database:
 
     def close(self):
         """Закрыть соединение с БД"""
-        self._upload_db()
         self.conn.close()
