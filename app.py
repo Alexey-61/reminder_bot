@@ -1,4 +1,9 @@
+import sys
 import os
+
+# Добавляем путь к папке reminder_bot
+sys.path.append(os.path.join(os.path.dirname(__file__), 'reminder_bot'))
+
 import asyncio
 import logging
 import threading
