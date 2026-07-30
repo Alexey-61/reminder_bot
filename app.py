@@ -1,14 +1,16 @@
 import sys
 import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), 'reminder_bot'))
-
 import asyncio
 import logging
 import threading
 import time
 from datetime import datetime, timedelta
 from flask import Flask
+
+
+from aiogram import Bot, Dispatcher, types
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
 from config import BOT_TOKEN
 from database.db import Database
@@ -19,7 +21,7 @@ from utils.scheduler import setup_scheduler
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- Flask для Render (чтобы не ругался) ---
+# --- Flask для Render ---
 app = Flask(__name__)
 
 @app.route("/")
