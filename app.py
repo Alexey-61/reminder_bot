@@ -1,7 +1,7 @@
 import sys
 import os
 
-# Добавляем путь к папке reminder_bot
+# Добавляем путь к папке reminder_bot (если есть)
 sys.path.append(os.path.join(os.path.dirname(__file__), 'reminder_bot'))
 
 import asyncio
@@ -9,7 +9,7 @@ import logging
 import threading
 import time
 from datetime import datetime, timedelta
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Update
 from aiogram.client.default import DefaultBotProperties
@@ -28,6 +28,7 @@ app = Flask(__name__)
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
 dp = Dispatcher()
 
+# Регистрация роутеров
 dp.include_router(start.router)
 dp.include_router(create.router)
 dp.include_router(list.router)
@@ -71,15 +72,30 @@ def background_worker():
 thread = threading.Thread(target=background_worker, daemon=True)
 thread.start()
 
+# ============ ВЕБХУК ============
 @app.route("/webhook", methods=['POST'])
 async def webhook():
+    """Точка входа для вебхуков от Telegram"""
     try:
+        # Получаем данные от Telegram
         data = await request.get_json()
+        
+        # Проверяем, что данные пришли
+        if not data:
+            logger.warning("Пустой запрос от Telegram")
+            return "OK", 200
+        
+        logger.info(f"📨 Получен вебхук: {data.get('message', {}).get('text', 'не текст')}")
+        
+        # Преобразуем в объект Update
         update = Update.model_validate(data, context={"bot": bot})
+        
+        # Передаём в диспетчер
         await dp.feed_update(bot, update)
+        
         return "OK", 200
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
+        logger.error(f"❌ Ошибка обработки вебхука: {e}")
         return "ERROR", 500
 
 @app.route("/", methods=['GET'])
