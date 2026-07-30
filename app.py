@@ -10,10 +10,10 @@ from aiogram.types import Update
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from reminder_bot.config import BOT_TOKEN
-from reminder_bot.database.db import Database
-from reminder_bot.handlers import start, create, list, settings, callback
-from reminder_bot.keyboards.keyboards import get_reminder_actions_keyboard
+from config import BOT_TOKEN
+from database.db import Database
+from handlers import start, create, list, settings, callback
+from keyboards.keyboards import get_reminder_actions_keyboard
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,7 +31,6 @@ dp.include_router(callback.router)
 
 db = Database()
 
-# ============ ФОНОВАЯ ПРОВЕРКА НАПОМИНАНИЙ ============
 def check_reminders():
     """Проверяет напоминания и отправляет их"""
     try:
@@ -54,7 +53,7 @@ def check_reminders():
         logger.error(f"Ошибка проверки: {e}")
 
 def background_worker():
-    """Фоновый поток, проверяющий напоминания каждые 30 секунд"""
+    """Фоновый поток для проверки напоминаний"""
     logger.info("🔄 Фоновый поток запущен")
     while True:
         try:
@@ -67,7 +66,6 @@ def background_worker():
 thread = threading.Thread(target=background_worker, daemon=True)
 thread.start()
 
-# ============ ВЕБХУК ============
 @app.route("/webhook", methods=['POST'])
 async def webhook():
     try:
